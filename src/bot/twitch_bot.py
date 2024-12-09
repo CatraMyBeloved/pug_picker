@@ -13,6 +13,7 @@ class PickBot:
     def __init__(self):
         self.channel_name = TWITCH_CHANNEL
         self.starter_names = BOT_ADMINS
+        self.queue_status = None
         self.uri = TWITCH_WEBSOCKET_URI
         self.queue = Queue()
         self._already_played = set()
@@ -28,11 +29,34 @@ class PickBot:
         self.queue.tank.clear()
         self.queue.dps.clear()
         self.queue.support.clear()
+        self.queue_status.set(f"Queue is currently {"" if self.queue.is_active else "not "}active.\n\n{"Type one of the following to queue for pugs: tank, dps, support, tankdps, tanksupport, dpssupport, flex" if self.queue.is_active else ""}")
         print("round started by GUI")
 
     def stop_round(self):
         self.queue.is_active = False
+        self.queue_status.set(f"Queue is currently {"" if self.queue.is_active else "not "}active.")
         print("round stopped by GUI")
+
+    def pick_teams(self):
+        team1, team2, team_1_captain, team_2_captain = self._select_teams()
+        if team1 and team2 and team_1_captain and team_2_captain:
+            # will superimpose this on image at some point instead of just printing to console
+            print("\n=== Teams Selected! ===")
+            print("Team 1:")
+            print(f"  Tank: {team1['tank']}")
+            print(f"  DPS: {', '.join(team1['dps'])}")
+            print(f"  Support: {', '.join(team1['support'])}")
+            print(f"  Captain: {team_1_captain}")
+            print("\nTeam 2:")
+            print(f"  Tank: {team2['tank']}")
+            print(f"  DPS: {', '.join(team2['dps'])}")
+            print(f"  Support: {', '.join(team2['support'])}")
+            print(f"  Captain: {team_2_captain}")
+        else:
+            print("\nNot enough unique players in each role for teams!")
+            print("Need: 2 unique tanks, 4 unique dps, 4 unique supports")
+            print("(Players picked for one role won't be picked for other roles)")
+
 
     def create_button(self, root, label, command_):
         button = tk.Button(root, 
@@ -56,7 +80,7 @@ class PickBot:
                    padx=10,
                    pady=5,
                    width=15,
-                   wraplength=100)
+                   wraplength=150)
         button.pack(padx=20, pady=20)
 
     def on_button_toggle(self):
@@ -68,19 +92,30 @@ class PickBot:
         root.geometry("1280x720")
         root.title("CommanderX Pug Picker")
     
-        self.create_button(root, "Start new round here", self.start_round)
-        self.create_button(root, "Stop current round here", self.stop_round)
+        self.create_button(root, "Start new queue", self.start_round)
+        self.create_button(root, "Stop current queue", self.stop_round)
+        self.create_button(root, "Pick teams", self.pick_teams)
 
         # Creating a Checkbutton
-        checkbutton = tk.Checkbutton(root, text="Enable Feature", 
+        checkbutton = tk.Checkbutton(root,
                              onvalue=1, offvalue=0, command=self.on_button_toggle)
-        checkbutton.config(bg="lightgrey", fg="blue", font=("Arial", 12), 
-                   selectcolor="white", relief="raised", padx=10, pady=5, text="allow repeats")
-        checkbutton.pack(padx=40, pady=40)
+        checkbutton.config(font=("Arial", 12), 
+                   selectcolor="white", padx=10, pady=5, text="Allow repeats")
+        checkbutton.pack(padx=30, pady=30)
         checkbutton.flash()
 
-        text_var = tk.StringVar()
-        text_var.set(f"Queue is currently {"" if self.queue.is_active else "not "}active.")
+        self.queue_status = tk.StringVar()
+        self.queue_status.set(f"Queue is currently {"" if self.queue.is_active else "not "}active.\n\n{"Type one of the following to queue for pugs: tank, dps, support, tankdps, tanksupport, dpssupport, flex" if self.queue.is_active else ""}")
+
+        queue_status_label = tk.Label(root, 
+                 textvariable=self.queue_status, anchor=tk.CENTER, bg="lightblue", height=5,              
+                 width=35, bd=3, font=("Arial", 16, "bold"), cursor="hand2",   
+                 fg="red", padx=15, pady=15, justify=tk.CENTER, relief=tk.RAISED,     
+                 underline=0, wraplength=500        
+                )
+
+        # Pack the label into the window
+        queue_status_label.pack(pady=20)
 
         # Start the GUI event loop
         root.mainloop()
