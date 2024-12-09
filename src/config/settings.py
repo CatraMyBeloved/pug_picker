@@ -14,7 +14,7 @@ else:
         'oauth_token' : 'oauth:aeq5w8jdllall6pnjfsnwt2mxouzdb'
     }
     config['Bot'] = {
-        'admins' : 'commanderx, noidea100'
+        'admins' : 'commanderx, noidea100, soverclysm'
     }
 
 TWITCH_CHANNEL = config.get('Twitch', 'channel')

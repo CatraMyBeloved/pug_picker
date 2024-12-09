@@ -2,6 +2,10 @@ import websockets
 import asyncio
 import random
 import re
+
+import threading
+import tkinter as tk
+
 from src.config.settings import *
 from src.bot.queue import Queue
 
@@ -19,7 +23,75 @@ class PickBot:
         self.websocket = None
         self.reconnect_delay = 5  # Start with 5 seconds delay between reconnection attempts
 
+    def start_round(self):
+        self.queue.is_active = True
+        self.queue.tank.clear()
+        self.queue.dps.clear()
+        self.queue.support.clear()
+        print("round started by GUI")
+
+    def stop_round(self):
+        self.queue.is_active = False
+        print("round stopped by GUI")
+
+    def create_button(self, root, label, command_):
+        button = tk.Button(root, 
+                   text=label, 
+                   command=command_,
+                   activebackground="blue", 
+                   activeforeground="white",
+                   anchor="center",
+                   bd=3,
+                   bg="lightgray",
+                   cursor="hand2",
+                   disabledforeground="gray",
+                   fg="black",
+                   font=("Arial", 12),
+                   height=2,
+                   highlightbackground="black",
+                   highlightcolor="green",
+                   highlightthickness=2,
+                   justify="left",
+                   overrelief="raised",
+                   padx=10,
+                   pady=5,
+                   width=15,
+                   wraplength=100)
+        button.pack(padx=20, pady=20)
+
+    def on_button_toggle(self):
+        self._repeats_okay = not self._repeats_okay
+        print(f"repeats flipped by GUI to {self._repeats_okay}")
+
+    def gui_loop(self):
+        root = tk.Tk()
+        root.geometry("1280x720")
+        root.title("CommanderX Pug Picker")
+    
+        self.create_button(root, "Start new round here", self.start_round)
+        self.create_button(root, "Stop current round here", self.stop_round)
+
+        # Creating a Checkbutton
+        checkbutton = tk.Checkbutton(root, text="Enable Feature", 
+                             onvalue=1, offvalue=0, command=self.on_button_toggle)
+        checkbutton.config(bg="lightgrey", fg="blue", font=("Arial", 12), 
+                   selectcolor="white", relief="raised", padx=10, pady=5, text="allow repeats")
+        checkbutton.pack(padx=40, pady=40)
+        checkbutton.flash()
+
+        text_var = tk.StringVar()
+        text_var.set(f"Queue is currently {"" if self.queue.is_active else "not "}active.")
+
+        # Start the GUI event loop
+        root.mainloop()
+
+
     async def connect_and_run(self):
+
+        # setting up gui thread
+        gui_thread = threading.Thread(target=self.gui_loop)
+        gui_thread.start()
+
         while True:  # Main reconnection loop
             try:
                 await self.connect()
@@ -179,4 +251,5 @@ class PickBot:
             print(f'\nDPS: {len(self.queue.dps)}')
             print(f'\nSupports: {len(self.queue.support)}')
             print("==========================")
+
 
