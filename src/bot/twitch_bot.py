@@ -5,6 +5,7 @@ import re
 
 import threading
 import tkinter as tk
+from tkinter import PhotoImage
 
 from src.config.settings import *
 from src.bot.queue import Queue
@@ -14,6 +15,7 @@ class PickBot:
         self.channel_name = TWITCH_CHANNEL
         self.starter_names = BOT_ADMINS
         self.queue_status = None
+        self.queue_button = None
         self.uri = TWITCH_WEBSOCKET_URI
         self.queue = Queue()
         self._already_played = set()
@@ -30,12 +32,27 @@ class PickBot:
         self.queue.dps.clear()
         self.queue.support.clear()
         self.queue_status.set(f"Queue is currently {"" if self.queue.is_active else "not "}active.\n\n{"Type one of the following to queue for pugs: tank, dps, support, tankdps, tanksupport, dpssupport, flex" if self.queue.is_active else ""}")
-        print("round started by GUI")
+        print("queue started by GUI")
 
     def stop_round(self):
         self.queue.is_active = False
         self.queue_status.set(f"Queue is currently {"" if self.queue.is_active else "not "}active.")
-        print("round stopped by GUI")
+        print("queue stopped by GUI")
+
+    def queue_round(self):
+        if self.queue.is_active:
+            self.queue.is_active = False
+            self.queue_status.set(f"Queue is currently {"" if self.queue.is_active else "not "}active.")
+            self.queue_button.set("Start new queue")
+            print("queue stopped by GUI")
+        else:
+            self.queue.is_active = True
+            self.queue.tank.clear()
+            self.queue.dps.clear()
+            self.queue.support.clear()
+            self.queue_status.set(f"Queue is currently {"" if self.queue.is_active else "not "}active.\n\n{"Type one of the following to queue for pugs: tank, dps, support, tankdps, tanksupport, dpssupport, flex" if self.queue.is_active else ""}")
+            self.queue_button.set("Stop current queue")
+            print("queue started by GUI")
 
     def pick_teams(self):
         team1, team2, team_1_captain, team_2_captain = self._select_teams()
@@ -58,9 +75,15 @@ class PickBot:
             print("(Players picked for one role won't be picked for other roles)")
 
 
-    def create_button(self, root, label, command_):
+    def create_button(self, root, label, command_, x_, y_):
+        if isinstance(label, str):
+            label_ = tk.StringVar()
+            label_.set(label)
+        else:
+            label_ = label
+
         button = tk.Button(root, 
-                   text=label, 
+                   textvariable=label_, 
                    command=command_,
                    activebackground="blue", 
                    activeforeground="white",
@@ -70,8 +93,8 @@ class PickBot:
                    cursor="hand2",
                    disabledforeground="gray",
                    fg="black",
-                   font=("Arial", 12),
-                   height=2,
+                   font=("Arial", 14),
+                   height=3,
                    highlightbackground="black",
                    highlightcolor="green",
                    highlightthickness=2,
@@ -79,9 +102,9 @@ class PickBot:
                    overrelief="raised",
                    padx=10,
                    pady=5,
-                   width=15,
-                   wraplength=150)
-        button.pack(padx=20, pady=20)
+                   width=20,
+                   wraplength=200)
+        button.place(x=x_, y=y_)
 
     def on_button_toggle(self):
         self._repeats_okay = not self._repeats_okay
@@ -89,33 +112,37 @@ class PickBot:
 
     def gui_loop(self):
         root = tk.Tk()
-        root.geometry("1280x720")
+        root.geometry("1920x1080")
         root.title("CommanderX Pug Picker")
+        self.queue_button = tk.StringVar()
+        self.queue_button.set("Start new queue")
     
-        self.create_button(root, "Start new queue", self.start_round)
-        self.create_button(root, "Stop current queue", self.stop_round)
-        self.create_button(root, "Pick teams", self.pick_teams)
+        self.create_button(root, self.queue_button, self.queue_round, 115, 15)
+        self.create_button(root, "Generate teams", self.pick_teams, 115, 125)
 
         # Creating a Checkbutton
         checkbutton = tk.Checkbutton(root,
                              onvalue=1, offvalue=0, command=self.on_button_toggle)
         checkbutton.config(font=("Arial", 12), 
                    selectcolor="white", padx=10, pady=5, text="Allow repeats")
-        checkbutton.pack(padx=30, pady=30)
-        checkbutton.flash()
+        checkbutton.place(x=115, y=235)
 
         self.queue_status = tk.StringVar()
-        self.queue_status.set(f"Queue is currently {"" if self.queue.is_active else "not "}active.\n\n{"Type one of the following to queue for pugs: tank, dps, support, tankdps, tanksupport, dpssupport, flex" if self.queue.is_active else ""}")
+        self.queue_status.set(f"Queue is currently {"" if self.queue.is_active else "not "}active.{"\n\nType one of the following to queue for pugs: tank, dps, support, tankdps, tanksupport, dpssupport, flex" if self.queue.is_active else ""}")
 
         queue_status_label = tk.Label(root, 
-                 textvariable=self.queue_status, anchor=tk.CENTER, bg="lightblue", height=5,              
-                 width=35, bd=3, font=("Arial", 16, "bold"), cursor="hand2",   
-                 fg="red", padx=15, pady=15, justify=tk.CENTER, relief=tk.RAISED,     
-                 underline=0, wraplength=500        
+                 textvariable=self.queue_status, anchor=tk.CENTER, height=7,              
+                 width=35, bd=3, font=("Arial", 14, "bold"),   
+                 fg="black", padx=15, pady=15, justify=tk.CENTER, relief=tk.RAISED,     
+                 wraplength=400        
                 )
 
         # Pack the label into the window
-        queue_status_label.pack(pady=20)
+        queue_status_label.place(x=15, y=290)
+
+        img = PhotoImage(file="img\PUGOFTHEDAYTEAMS.png")
+        image_label = tk.Label(root, image=img)
+        image_label.place(x=505, y=15)
 
         # Start the GUI event loop
         root.mainloop()
