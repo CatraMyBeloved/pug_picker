@@ -2,8 +2,10 @@ import websockets
 import asyncio
 import random
 import re
+import pandas as pd
 from src.config.settings import *
 from src.bot.queue import Queue
+from src.bot.game_log import *
 
 class PickBot:
     def __init__(self):
