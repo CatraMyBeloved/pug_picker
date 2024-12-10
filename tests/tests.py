@@ -17,5 +17,6 @@ def manual_test():
     print(f"Captains: {captain1}, {captain2}")
 
 
-if __name__ == "__main__":
-    manual_test()
+set1 = {"player1", "player2", "player3", "player4", "player5", "player6"}
+set1.update(('tim','tom'))
+print(set1)

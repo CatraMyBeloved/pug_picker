@@ -115,6 +115,15 @@ class PickBot:
         content = content.lower().strip()
 
         if username in self.starter_names:
+
+            if content == '!admin_test':
+                print("\n=== Admin test! ===")
+                self.queue.tank.update(('tank1', 'tank2'))
+                self.queue.dps.update(('dps1','dps2','dps3','dps4'))
+                self.queue.support.update(('support1','support2','support3',
+                                       'support4'))
+                self.queue.is_active = 'active'
+
             if content == '!start':
                 self.queue.is_active = 'active'
                 self.queue.tank.clear()
@@ -153,7 +162,10 @@ class PickBot:
                                              team_2_dps1 = team2['dps'][0],
                                              team_2_dps2 = team2['dps'][1],
                                              team_2_support1=team2['support'][0],
-                                             team_2_support2=team2['support'][1]
+                                             team_2_support2=team2[
+                                                 'support'][1],
+                                             team_1_captain=team_1_captain,
+                                             team_2_captain=team_2_captain
                                              )
 
                 else:
@@ -165,6 +177,7 @@ class PickBot:
 
             elif (content == '!allow_repeats' and self.queue.is_active ==
                   'inactive' and self._repeats_okay == False):
+                self._already_played = set()
                 self._repeats_okay = True
                 return
 
@@ -172,6 +185,8 @@ class PickBot:
                   'inactive' and self._repeats_okay == True):
                 self._repeats_okay = False
                 return
+
+
 
             if content == '!status':
                 await self._send_status()
@@ -204,11 +219,17 @@ class PickBot:
                                                              '!team2win']:
             self.queue.is_active = 'inactive'
             if content == '!team1win':
+                print('\n=== TEAM 1 WINS===')
+
                 self.current_game.winner = 'team_1'
             elif content == '!team2win':
+                print('\n=== TEAM 2 WINS===')
+
                 self.current_game.winner = 'team_2'
             self.current_game.log_game('archive/games.csv')
             self.current_game = None
+
+
 
 
     async def _send_status(self):
