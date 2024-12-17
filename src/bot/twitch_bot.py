@@ -7,6 +7,7 @@ import threading
 import tkinter as tk
 from tkinter import PhotoImage
 import tkinter.scrolledtext as st 
+from PIL import Image, ImageTk
 
 from src.config.settings import *
 from src.bot.queue import Queue
@@ -17,6 +18,9 @@ class PickBot:
         self.starter_names = BOT_ADMINS
         self.queue_status = None
         self.queue_button = None
+        self.captain_logo = None
+        self.pug_image = None
+        self.main_canvas = None
         self.root = None
         self.gui_log = None
         self.uri = TWITCH_WEBSOCKET_URI
@@ -62,152 +66,31 @@ class PickBot:
         #self.queue.support.add("skairipa")
         #self.queue.support.add("kellex")
 
-        # not for testing
 
         team1, team2, team_1_captain, team_2_captain = self._select_teams()
 
-        if team2['support'][0] == team_2_captain:
-            img_pre = PhotoImage(file="img\\Captain_Logo.png")
-            img = img_pre.subsample(12,12)
-            image_label = tk.Label(self.root, image=img)
-            image_label.place(x=783+50, y=196-25)
+        if team1 and team2 and team_1_captain and team_2_captain and not self.queue.is_active:
 
-        elif team2['support'][1] == team_2_captain:
-            img_pre = PhotoImage(file="img\\Captain_Logo.png")
-            img = img_pre.subsample(12,12)
-            image_label = tk.Label(self.root, image=img)
-            image_label.place(x=1168+50, y=196-25)
+            self.main_canvas.delete("all")
 
-        elif team2['dps'][0] == team_2_captain:
-            img_pre = PhotoImage(file="img\\Captain_Logo.png")
-            img = img_pre.subsample(12,12)
-            image_label = tk.Label(self.root, image=img)
-            image_label.place(x=607+50, y=403-25)
+            self.main_canvas.create_image(892 * 4 / 6, 725 * 4 / 6, image=self.pug_image)
 
-        elif team2['dps'][1] == team_2_captain:
-            img_pre = PhotoImage(file="img\\Captain_Logo.png")
-            img = img_pre.subsample(12,12)
-            image_label = tk.Label(self.root, image=img)
-            image_label.place(x=1336+50, y=401-25)
+            positions = { team2['support'][0]:(783, 196), team2['support'][1]:(1168, 196), team2['dps'][0]:(607, 403),
+                        team2['tank']:(978, 394), team2['dps'][1]:(1336, 401), team1['dps'][0]:(607, 647),
+                        team1['tank']:(978, 627), team1['dps'][1]:(1336, 647), team1['support'][0]:(783,858),
+                        team1['support'][1]:(1132,858)}
 
-        elif team2['tank'] == team_2_captain:
-            img_pre = PhotoImage(file="img\\Captain_Logo.png")
-            img = img_pre.subsample(12,12)
-            image_label = tk.Label(self.root, image=img)
-            image_label.place(x=978+50, y=394-25)
+            for player_name in positions:
+                gen_label = tk.Label(self.root, 
+                     text=player_name, anchor=tk.CENTER, height=1, bg="cyan",       
+                     width=21, bd=3, font=("Arial", 14),   
+                     fg="black", justify=tk.CENTER,     
+                     wraplength=400        
+                    )
+                gen_label.place(x=positions[player_name][0], y=positions[player_name][1]) 
+                if player_name == team_1_captain or player_name == team_2_captain:
+                    self.main_canvas.create_image(positions[player_name][0]-222, positions[player_name][1]-25, image=self.captain_logo)
 
-        if team1['dps'][0] == team_1_captain:
-            img_pre = PhotoImage(file="img\\Captain_Logo.png")
-            img = img_pre.subsample(12,12)
-            image_label = tk.Label(self.root, image=img)
-            image_label.place(x=607+50, y=647-25)
-
-        elif team1['tank'] == team_1_captain:
-            img_pre = PhotoImage(file="img\\Captain_Logo.png")
-            img = img_pre.subsample(12,12)
-            image_label = tk.Label(self.root, image=img)
-            image_label.place(x=978+50, y=627-25)
-
-        elif team1['dps'][1] == team_1_captain:
-            img_pre = PhotoImage(file="img\\Captain_Logo.png")
-            img = img_pre.subsample(12,12)
-            image_label = tk.Label(self.root, image=img)
-            image_label.place(x=1336+50, y=647-25)
-
-        elif team1['support'][0] == team_1_captain:
-            img_pre = PhotoImage(file="img\\Captain_Logo.png")
-            img = img_pre.subsample(12,12)
-            image_label = tk.Label(self.root, image=img)
-            image_label.place(x=783+50, y=858-25)
-
-        elif team1['support'][1] == team_1_captain:
-            img_pre = PhotoImage(file="img\\Captain_Logo.png")
-            img = img_pre.subsample(12,12)
-            image_label = tk.Label(self.root, image=img)
-            image_label.place(x=1132+50, y=858-25)
-
-        player1_label = tk.Label(self.root, 
-                 text=team2['support'][0], anchor=tk.CENTER, height=1, bg="cyan",       
-                 width=21, bd=3, font=("Arial", 14),   
-                 fg="black", justify=tk.CENTER,     
-                 wraplength=400        
-                )
-        player1_label.place(x=783, y=196)
-
-        player2_label = tk.Label(self.root, 
-                 text=team2['support'][1], anchor=tk.CENTER, height=1, bg="cyan",       
-                 width=21, bd=3, font=("Arial", 14),   
-                 fg="black", justify=tk.CENTER,     
-                 wraplength=400        
-                )
-        player2_label.place(x=1168, y=196)
-
-        player3_label = tk.Label(self.root, 
-                 text=team2['dps'][0], anchor=tk.CENTER, height=1, bg="cyan",       
-                 width=21, bd=3, font=("Arial", 14),   
-                 fg="black", justify=tk.CENTER,     
-                 wraplength=400        
-                )
-        player3_label.place(x=607, y=403)
-
-        player4_label = tk.Label(self.root, 
-                 text=team2['tank'], anchor=tk.CENTER, height=1, bg="cyan",       
-                 width=21, bd=3, font=("Arial", 14),   
-                 fg="black", justify=tk.CENTER,     
-                 wraplength=400        
-                )
-        player4_label.place(x=978, y=394)
-
-        player5_label = tk.Label(self.root, 
-                 text=team2['dps'][1], anchor=tk.CENTER, height=1, bg="cyan",       
-                 width=21, bd=3, font=("Arial", 14),   
-                 fg="black", justify=tk.CENTER,     
-                 wraplength=400        
-                )
-        player5_label.place(x=1336, y=401)
-
-        player6_label = tk.Label(self.root, 
-                 text=team1['dps'][0], anchor=tk.CENTER, height=1, bg="cyan",       
-                 width=21, bd=3, font=("Arial", 14),   
-                 fg="black", justify=tk.CENTER,     
-                 wraplength=400        
-                )
-        player6_label.place(x=607, y=647)
-
-        player7_label = tk.Label(self.root, 
-                 text=team1['tank'], anchor=tk.CENTER, height=1, bg="cyan",       
-                 width=21, bd=3, font=("Arial", 14),   
-                 fg="black", justify=tk.CENTER,     
-                 wraplength=400        
-                )
-        player7_label.place(x=978, y=627)
-
-        player8_label = tk.Label(self.root, 
-                 text=team1['dps'][1], anchor=tk.CENTER, height=1, bg="cyan",       
-                 width=21, bd=3, font=("Arial", 14),   
-                 fg="black", justify=tk.CENTER,     
-                 wraplength=400        
-                )
-        player8_label.place(x=1336, y=647)
-
-        player9_label = tk.Label(self.root, 
-                 text=team1['support'][0], anchor=tk.CENTER, height=1, bg="cyan",       
-                 width=21, bd=3, font=("Arial", 14),   
-                 fg="black", justify=tk.CENTER,     
-                 wraplength=400        
-                )
-        player9_label.place(x=783, y=858)
-
-        player10_label = tk.Label(self.root, 
-                 text=team1['support'][1], anchor=tk.CENTER, height=1, bg="cyan",       
-                 width=21, bd=3, font=("Arial", 14),   
-                 fg="black", justify=tk.CENTER,     
-                 wraplength=400        
-                )
-        player10_label.place(x=1132, y=858)
-
-        if team1 and team2 and team_1_captain and team_2_captain:
-            # will superimpose this on image at some point instead of just printing to console
             print("\n=== Teams Selected! ===")
             print("Team 1:")
             print(f"  Tank: {team1['tank']}")
@@ -223,6 +106,7 @@ class PickBot:
             print("\nNot enough unique players in each role for teams!")
             print("Need: 2 unique tanks, 4 unique dps, 4 unique supports")
             print("(Players picked for one role won't be picked for other roles)")
+            print("Also check that you have closed the queue before attempting to generate teams")
 
 
     def create_button(self, root, label, command_, x_, y_):
@@ -270,6 +154,16 @@ class PickBot:
         self.create_button(self.root, self.queue_button, self.queue_round, 115, 15)
         self.create_button(self.root, "Generate teams", self.pick_teams, 115, 125)
 
+        img_pre = Image.open("img\\Captain_Logo.png")
+        img = img_pre.resize((70, 70))
+        self.captain_logo = ImageTk.PhotoImage(img)
+
+        frame = tk.Frame(self.root)
+        frame.place()
+
+        self.main_canvas = tk.Canvas(self.root, bg="black", width=892 *4 /3, height=725 *4 /3)
+        self.main_canvas.place(x=490, y=15)
+
         # Creating a Checkbutton
         checkbutton = tk.Checkbutton(self.root,
                              onvalue=1, offvalue=0, command=self.on_button_toggle)
@@ -302,9 +196,11 @@ class PickBot:
         self.gui_log.configure(state ='disabled') 
 
         img_pre = PhotoImage(file="img\\PUGOFTHEDAYTEAMS.png")
-        img = img_pre.zoom(4,4).subsample(3,3)
-        image_label = tk.Label(self.root, image=img)
-        image_label.place(x=490, y=15)
+        self.pug_image = img_pre.zoom(4,4).subsample(3,3)
+        self.main_canvas.create_image(892 * 4 / 6, 725 * 4 / 6, image=self.pug_image)
+
+        #image_label = tk.Label(self.root, image=img)
+        #image_label.place(x=490, y=15)
 
         # Start the GUI event loop
         self.root.mainloop()
