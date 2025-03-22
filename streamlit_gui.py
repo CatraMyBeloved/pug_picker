@@ -55,7 +55,19 @@ def main():
                          f'{len(valid_players)} valid players.')
             if len(valid_players) >= 10:
                 st.write('Yeah! YIPPIE')
+    # Add this after the Queue Status section in streamlit_gui.py
 
+    # Testing Tools Section
+    st.header("Testing Tools")
+
+    if st.button("Populate Full Queue (20 Players)"):
+        status = bot.populate_full_queue(20)
+        st.success(status)
+
+    if st.button("Create Archive Directory"):
+        import os
+        os.makedirs("archive", exist_ok=True)
+        st.success("Archive directory created (if it didn't exist)")
     # Status metrics
     col1, col2, col3 = st.columns(3)
     status = bot.get_queue_status()
@@ -85,6 +97,8 @@ def main():
     st.header('Team selection')
     if bot.queue.is_active == 'active':
         st.write('Queue must be stopped before generating teams!')
+    if bot.queue.is_active == 'ingame':
+        st.write('Game must be completed before generating teams!')
     else:
         if st.button('Generate Teams'):
             team1, team2, captain1, captain2, message = bot.generate_teams()

@@ -46,7 +46,25 @@ class PickBot:
         if min_weight < 0:
             weights = [w - min_weight + 1 for w in weights]
 
-        return random.choices(player_list, weights=weights, k=k)
+        # Create a copy of the player list and weights for sampling
+        remaining_players = player_list.copy()
+        remaining_weights = weights.copy()
+        selected_players = []
+
+        for _ in range(k):
+            if not remaining_players:
+                break
+
+            # Select one player based on weights
+            idx = random.choices(range(len(remaining_players)),
+                                 weights=remaining_weights, k=1)[0]
+            selected_players.append(remaining_players[idx])
+
+            # Remove the selected player and their weight
+            remaining_players.pop(idx)
+            remaining_weights.pop(idx)
+
+        return selected_players
 
     async def connect_and_run(self):
         while True:  # Main reconnection loop
@@ -91,7 +109,7 @@ class PickBot:
         queued_support = set(self.queue.support)
 
         all_queued = queued_tanks | queued_dps | queued_support
-        increment_all_players(all_queued)
+        increment_all_players(list(all_queued))
 
 
         valid_tanks = queued_tanks
@@ -133,7 +151,7 @@ class PickBot:
         captain2 = random.choice(list(team_2_set))
 
         picked_players = set(selected_tanks + selected_dps + selected_supports)
-        reset_priorities(picked_players)
+        reset_priorities(list(picked_players))
 
         return team_1, team_2, captain1, captain2
 
@@ -316,3 +334,31 @@ class PickBot:
         self.current_game.log_game('archive/games.csv')
         self.queue.is_active = 'inactive'
         self.current_game = None
+
+    def populate_full_queue(self, num_players=20):
+        """
+        Populate all roles with the specified number of players for testing
+
+        Args:
+            num_players (int): Number of players to add to each role
+        """
+        # Clear the queue first
+        self.queue.tank.clear()
+        self.queue.dps.clear()
+        self.queue.support.clear()
+
+        # Activate the queue to allow adding users
+        old_state = self.queue.is_active
+        self.queue.is_active = 'active'
+
+        # Add test users to each role
+        for i in range(1, num_players + 1):
+            self.queue.tank.add(f"test_tank{i}")
+            self.queue.dps.add(f"test_dps{i}")
+            self.queue.support.add(f"test_support{i}")
+
+        # Return the queue to inactive state for team generation
+        self.queue.is_active = 'inactive'
+
+        print(f"\nAdded {num_players} test players to each role")
+        return f"Populated queue with {num_players} players in each role. Queue now has {len(self.queue.tank)} tanks, {len(self.queue.dps)} DPS, and {len(self.queue.support)} supports."
