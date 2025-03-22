@@ -20,6 +20,9 @@ class PickBot:
         self.websocket = None
         self.reconnect_delay = 3
         self.current_game = None
+        self.tanks_per_team = 1
+        self.dps_per_team = 2
+        self.supports_per_team = 2
         initialize_priority_database()
 
     def calculate_priority_score(self, times_queued, last_game_timestamp):
@@ -103,7 +106,17 @@ class PickBot:
             print(f"Connection error: {str(e)}")
             raise  # Re-raise to trigger reconnection
 
-    def _select_teams(self):
+    # Update the _select_teams method to ensure consistent data structure for all roles
+
+    def _select_teams(self, tanks_per_team=None, dps_per_team=None,
+                      supports_per_team=None):
+        # Use parameters if provided, otherwise use instance variables
+        tanks_needed = (
+                                   tanks_per_team or self.tanks_per_team) * 2  # For both teams
+        dps_needed = (dps_per_team or self.dps_per_team) * 2  # For both teams
+        supports_needed = (
+                                      supports_per_team or self.supports_per_team) * 2  # For both teams
+
         queued_tanks = set(self.queue.tank)
         queued_dps = set(self.queue.dps)
         queued_support = set(self.queue.support)
@@ -111,41 +124,59 @@ class PickBot:
         all_queued = queued_tanks | queued_dps | queued_support
         increment_all_players(list(all_queued))
 
-
         valid_tanks = queued_tanks
         valid_dps = queued_dps
         valid_supports = queued_support
 
-        if len(valid_tanks) < 2 or len(valid_dps) < 4 or len(
-                valid_supports) < 4:
+        if len(valid_tanks) < tanks_needed or len(
+                valid_dps) < dps_needed or len(
+                valid_supports) < supports_needed:
             return None, None, None, None
 
-        selected_tanks = self.weighted_random_sample(valid_tanks, 2)
+        selected_tanks = self.weighted_random_sample(valid_tanks, tanks_needed)
 
         valid_dps -= set(selected_tanks)
         valid_supports -= set(selected_tanks)
 
-        if len(valid_dps) < 4 or len(valid_supports) < 4:
+        if len(valid_dps) < dps_needed or len(valid_supports) < supports_needed:
             return None, None, None, None
 
-        selected_dps = self.weighted_random_sample(valid_dps, 4)
+        selected_dps = self.weighted_random_sample(valid_dps, dps_needed)
 
         valid_supports -= set(selected_dps)
 
-        if len(valid_supports) < 4:
+        if len(valid_supports) < supports_needed:
             return None, None, None, None
 
-        selected_supports = self.weighted_random_sample(valid_supports, 4)
+        selected_supports = self.weighted_random_sample(valid_supports,
+                                                        supports_needed)
 
-        team_1 = {'tank': selected_tanks[0], 'dps': selected_dps[0:2],
-                  'support': selected_supports[0:2]}
-        team_2 = {'tank': selected_tanks[1], 'dps': selected_dps[2:4],
-                  'support': selected_supports[2:4]}
+        tanks_per_team = tanks_per_team or self.tanks_per_team
+        dps_per_team = dps_per_team or self.dps_per_team
+        supports_per_team = supports_per_team or self.supports_per_team
 
-        team_1_set = {team_1['tank']} | set(team_1['dps']) | set(
-            team_1['support'])
-        team_2_set = {team_2['tank']} | set(team_2['dps']) | set(
-            team_2['support'])
+        # Create team 1 - always use lists for consistency
+        team_1 = {
+            'tank': selected_tanks[:tanks_per_team],
+            'dps': selected_dps[:dps_per_team],
+            'support': selected_supports[:supports_per_team]
+        }
+
+        # Create team 2 - always use lists for consistency
+        team_2 = {
+            'tank': selected_tanks[tanks_per_team:],
+            'dps': selected_dps[dps_per_team:],
+            'support': selected_supports[supports_per_team:]
+        }
+
+        # Calculate flattened sets for captain selection
+        team_1_set = set()
+        for role_players in team_1.values():
+            team_1_set.update(role_players)
+
+        team_2_set = set()
+        for role_players in team_2.values():
+            team_2_set.update(role_players)
 
         captain1 = random.choice(list(team_1_set))
         captain2 = random.choice(list(team_2_set))
@@ -294,44 +325,70 @@ class PickBot:
             'support_players': list(self.queue.support)
         }
 
-
-    def generate_teams(self):
+    def generate_teams(self, tanks_per_team=None, dps_per_team=None,
+                       supports_per_team=None):
         """Generate teams and return result"""
         if self.queue.is_active == 'active':
             return None, None, None, None, "Queue must be stopped before generating teams"
 
-        team1, team2, captain1, captain2 = self._select_teams()
+        # Update instance variables if parameters provided
+        if tanks_per_team is not None:
+            self.tanks_per_team = tanks_per_team
+        if dps_per_team is not None:
+            self.dps_per_team = dps_per_team
+        if supports_per_team is not None:
+            self.supports_per_team = supports_per_team
+
+        team1, team2, captain1, captain2 = self._select_teams(
+            self.tanks_per_team, self.dps_per_team, self.supports_per_team
+        )
+
         if not all([team1, team2, captain1, captain2]):
             return None, None, None, None, "Not enough unique players in each role"
 
-        self.current_game = Game(team_1_tank=team1['tank'],
-                                 team_1_dps1=team1['dps'][0],
-                                 team_1_dps2=team1['dps'][1],
-                                 team_1_support1=team1[
-                                     'support'][0],
-                                 team_1_support2=team1[
-                                     'support'][1],
-                                 team_2_tank=team2['tank'],
-                                 team_2_dps1=team2['dps'][0],
-                                 team_2_dps2=team2['dps'][1],
-                                 team_2_support1=team2['support'][
-                                     0],
-                                 team_2_support2=team2[
-                                     'support'][1],
-                                 team_1_captain=captain1,
-                                 team_2_captain=captain2)
+        # Check if using standard team size (5v5 with 1 tank, 2 dps, 2 support)
+        is_standard_size = (
+                    self.tanks_per_team == 1 and self.dps_per_team == 2 and self.supports_per_team == 2)
+
+        if is_standard_size:
+            # Create the standard Game object that we know how to log
+            self.current_game = Game(
+                team_1_tank=team1['tank'][0],
+                team_1_dps1=team1['dps'][0],
+                team_1_dps2=team1['dps'][1],
+                team_1_support1=team1['support'][0],
+                team_1_support2=team1['support'][1],
+                team_2_tank=team2['tank'][0],
+                team_2_dps1=team2['dps'][0],
+                team_2_dps2=team2['dps'][1],
+                team_2_support1=team2['support'][0],
+                team_2_support2=team2['support'][1],
+                team_1_captain=captain1,
+                team_2_captain=captain2
+            )
+        else:
+            # For non-standard teams, create a placeholder object that won't be logged
+            print("Non-standard team size detected - logging will be disabled")
+            self.current_game = {"team1": team1, "team2": team2,
+                                 "nonstandard": True}
 
         return team1, team2, captain1, captain2, "Teams generated successfully"
 
     def winner1(self):
-        self.current_game.winner='team1'
-        self.current_game.log_game('archive/games.csv')
+        if isinstance(self.current_game, Game):
+            self.current_game.winner='team1'
+            self.current_game.log_game('archive/games.csv')
+        else:
+            print("Non-standard team size - game not logged")
         self.queue.is_active = 'inactive'
         self.current_game = None
 
     def winner2(self):
-        self.current_game.winner='team2'
-        self.current_game.log_game('archive/games.csv')
+        if isinstance(self.current_game, Game):
+            self.current_game.winner='team2'
+            self.current_game.log_game('archive/games.csv')
+        else:
+            print("Non-standard team size - game not logged")
         self.queue.is_active = 'inactive'
         self.current_game = None
 
@@ -362,3 +419,12 @@ class PickBot:
 
         print(f"\nAdded {num_players} test players to each role")
         return f"Populated queue with {num_players} players in each role. Queue now has {len(self.queue.tank)} tanks, {len(self.queue.dps)} DPS, and {len(self.queue.support)} supports."
+
+    def get_team_composition(self):
+        return {
+            'tanks_per_team': self.tanks_per_team,
+            'dps_per_team': self.dps_per_team,
+            'supports_per_team': self.supports_per_team,
+            'total_per_team': self.tanks_per_team + self.dps_per_team + self.supports_per_team,
+            'is_standard': self.tanks_per_team == 1 and self.dps_per_team == 2 and self.supports_per_team == 2
+        }
